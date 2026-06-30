@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KARNER — Otonom Evren</title>
+<style>
+  :root{--bg:#0a0612;--vio:#8b5cff;--vio2:#b18cff;--viod:#5a2fd6;--silver:#e6e6ea;--gray:#8a8a93}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:auto}
+  html,body{overflow-anchor:none}
+  body{overflow-x:hidden;cursor:none;font-family:system-ui,-apple-system,sans-serif;color:var(--silver);
+    background:#060409}
+
+  /* GALAKSİ arka plan (hareketli, her şeyin arkasında) */
+  #galaxy{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block;background:#05030a}
+
+  /* HERO */
+  #scene{height:200vh;position:relative;z-index:1}
+  #stick{position:sticky;top:0;height:100vh;overflow:hidden;background:transparent}
+  #cv{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block;
+    object-fit:cover;will-change:transform}
+  .vignette{position:absolute;inset:0;z-index:4;pointer-events:none;
+    box-shadow:inset 0 0 200px 56px rgba(5,3,12,.55)}
+
+  /* üst bar (sabit) */
+  .bar{position:fixed;top:0;left:0;width:100%;z-index:8;pointer-events:none;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:clamp(18px,3.4vw,40px) clamp(20px,4vw,52px)}
+  .mark{display:flex;align-items:center;gap:12px}
+  .mark img{height:clamp(46px,5.2vw,66px);width:auto;display:block;
+    filter:drop-shadow(0 0 18px rgba(139,92,255,.6)) drop-shadow(0 2px 8px rgba(0,0,0,.55))}
+  .mark span{font-weight:800;letter-spacing:.42em;font-size:clamp(14px,1.4vw,18px)}
+  .mark b{color:var(--vio2)}
+  .nav{display:flex;gap:clamp(14px,2vw,32px);font-size:12px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--gray)}
+
+  /* welcome — iki robotun ellerinin arasında, kutusuz (stick içinde, kaydırınca gider) */
+  .welcome{position:absolute;left:50%;top:55%;transform:translate(-50%,-50%);z-index:7;
+    text-align:center;width:min(680px,86vw);opacity:0;pointer-events:none;will-change:opacity,transform;
+    text-shadow:0 2px 22px rgba(0,0,0,.9), 0 0 60px rgba(0,0,0,.7)}
+  .welcome .k{font-size:11px;letter-spacing:.55em;text-transform:uppercase;color:var(--vio2);margin-bottom:18px}
+  .welcome h1{font-size:clamp(30px,5.4vw,72px);line-height:1.04;font-weight:800;letter-spacing:-.02em}
+  .welcome h1 b{color:var(--vio2)}
+  .welcome p{margin-top:20px;color:var(--silver);font-weight:300;font-size:clamp(15px,1.6vw,20px)}
+
+  .hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:7;color:var(--gray);
+    font-size:10px;letter-spacing:.32em;display:flex;flex-direction:column;align-items:center;gap:8px;will-change:opacity}
+  .hint i{width:1px;height:32px;background:linear-gradient(var(--vio),transparent);animation:drop 1.9s infinite}
+
+  #cursor{position:fixed;top:0;left:0;z-index:30;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:1px solid var(--vio);border-radius:50%;pointer-events:none;mix-blend-mode:screen;
+    box-shadow:0 0 12px var(--vio);will-change:transform;transition:width .2s,height .2s}
+  #cursor::after{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--vio2)}
+  #loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#060409;
+    color:var(--vio2);letter-spacing:.4em;font-size:11px;transition:opacity .8s}
+  @keyframes drop{0%{transform:scaleY(0);transform-origin:top;opacity:0}40%{transform:scaleY(1);opacity:1}
+    100%{transform:scaleY(1);transform-origin:bottom;opacity:0}}
+  @media(max-width:760px){body{cursor:auto}#cursor{display:none}
+    /* mobilde iki robot da kesilmeden görünür; bant yukarı, yazı altına. arka = galaksi */
+    #cv{object-fit:contain;object-position:center 24%}
+    .welcome{top:64%;width:92vw}
+    .welcome h1{font-size:clamp(34px,9vw,52px)}
+    .welcome .k{margin-bottom:12px}}
+</style>
+</head>
+<body>
+<canvas id="galaxy"></canvas>
+<div id="loader">EVREN YÜKLENİYOR</div>
+
+<div class="bar">
+  <div class="mark"><img src="assets/karner-logo.png" alt="KARNER"><span>KAR<b>NER</b></span></div>
+</div>
+
+<!-- HERO: video scrub + welcome -->
+<div id="scene"><div id="stick">
+  <canvas id="cv"></canvas>
+  <div class="vignette"></div>
+  <div class="welcome" id="welcome">
+    <div class="k">otonom dijital stüdyo</div>
+    <h1>yakında <b>sizlerleyiz</b>.</h1>
+    <p>Web, yapay zekâ ve otomasyonu tek zekâda birleştiren dijital stüdyo.</p>
+  </div>
+  <div class="hint" id="hint"><i></i></div>
+</div></div>
+
+<div id="cursor"></div>
+
+<script>
+const band=(p,a,b)=> p<a?0 : p>b?1 : (p-a)/(b-a);
+
+/* imleç + nav */
+const cursor=document.getElementById('cursor');
+addEventListener('pointermove',e=>{ cursor.style.transform=`translate(${e.clientX}px,${e.clientY}px)`; });
+document.querySelectorAll('.nav span').forEach(s=>{ s.style.pointerEvents='auto';
+  s.onpointerenter=()=>{cursor.style.width='44px';cursor.style.height='44px';};
+  s.onpointerleave=()=>{cursor.style.width='26px';cursor.style.height='26px';}; });
+
+/* ===== GALAKSİ arka plan — nebula bir kez çizilir, yıldızlar canlanır ===== */
+const gx=document.getElementById('galaxy'), gc=gx.getContext('2d');
+let GW,GH,GR,nebula; const STARS=[];
+function buildNebula(){
+  nebula=document.createElement('canvas'); nebula.width=GW; nebula.height=GH;
+  const n=nebula.getContext('2d');
+  n.fillStyle='#05030a'; n.fillRect(0,0,GW,GH);
+  const blobs=[[0.24,0.28,'rgba(99,60,210,0.42)'],[0.80,0.64,'rgba(150,70,200,0.30)'],
+               [0.55,0.12,'rgba(40,30,90,0.45)'],[0.12,0.82,'rgba(70,40,150,0.30)']];
+  for(const [bx,by,col] of blobs){ const r=Math.max(GW,GH)*0.6;
+    const g=n.createRadialGradient(bx*GW,by*GH,0,bx*GW,by*GH,r);
+    g.addColorStop(0,col); g.addColorStop(1,'rgba(5,3,10,0)'); n.fillStyle=g; n.fillRect(0,0,GW,GH); }
+}
+function sizeGalaxy(){
+  GR=Math.min(devicePixelRatio||1,2); GW=Math.round(innerWidth*GR); GH=Math.round(innerHeight*GR);
+  gx.width=GW; gx.height=GH; buildNebula(); STARS.length=0;
+  const count=Math.min(220,Math.round(innerWidth*innerHeight/8500));   // yoğunluk (perf tavanı)
+  for(let i=0;i<count;i++) STARS.push({ x:Math.random()*GW, y:Math.random()*GH,
+    r:(Math.random()*1.25+0.3)*GR, b:Math.random()*0.55+0.45, tw:Math.random()*6.283,
+    sp:0.5+Math.random()*1.6, vy:(0.015+Math.random()*0.05)*GR, vx:(Math.random()-0.5)*0.02*GR,
+    vio:Math.random()<0.28 });
+}
+sizeGalaxy();
+let gt=0;
+function drawGalaxy(){ requestAnimationFrame(drawGalaxy); gt+=0.016;
+  gc.drawImage(nebula,0,0);
+  for(const s of STARS){ s.y+=s.vy; s.x+=s.vx;
+    if(s.y>GH+2){ s.y=-2; s.x=Math.random()*GW; }
+    if(s.x<-2)s.x=GW+2; else if(s.x>GW+2)s.x=-2;
+    gc.globalAlpha=Math.max(0,Math.min(1, s.b*(0.55+0.45*Math.sin(s.tw+gt*s.sp)) ));
+    gc.fillStyle=s.vio?'#c9b6ff':'#ffffff';
+    gc.beginPath(); gc.arc(s.x,s.y,s.r,0,6.283); gc.fill(); }
+  gc.globalAlpha=1;
+}
+drawGalaxy();
+
+/* ===== HERO: video scrub — ImageBitmap pre-decode (kaydırırken decode yok) ===== */
+const cv=document.getElementById('cv');
+const cx=cv.getContext('2d',{alpha:false,desynchronized:true});
+const FW=1920, FH=1080;            // kare native çözünürlüğü = canvas sabit boyutu
+let lastIdx=-1;
+function sizeCv(){ cv.width=FW; cv.height=FH;   // sabit buffer, DPR transform yok
+  cx.imageSmoothingQuality='high'; lastIdx=-1; } // ölçeklemeyi CSS object-fit:cover (GPU) yapar
+sizeCv();
+const FRAME_COUNT=49, bmps=new Array(FRAME_COUNT); let loaded=0, framesReady=false;
+function ready(){ if(framesReady)return; framesReady=true; lastIdx=-1;
+  const l=document.getElementById('loader'); if(l){ l.style.opacity=0; setTimeout(()=>l.remove(),700); } }
+for(let i=0;i<FRAME_COUNT;i++){ const img=new Image(); img.decoding='async';
+  img.onload =async()=>{ try{ bmps[i]=await createImageBitmap(img); }catch(e){ bmps[i]=img; }
+    if(++loaded>=FRAME_COUNT) ready(); };
+  img.onerror=()=>{ if(++loaded>=FRAME_COUNT) ready(); };
+  img.src=`frames/${String(i+1).padStart(4,'0')}.jpg`; }
+function drawAt(idx){
+  const bmp=bmps[idx];
+  if(!bmp){ cx.fillStyle='#0a0717'; cx.fillRect(0,0,FW,FH); return; }
+  cx.drawImage(bmp,0,0,FW,FH);   // 1:1, ölçekleme yok → GPU fill-rate yükü kalkar
+}
+
+/* ===== döngü ===== */
+const sceneEl=document.getElementById('scene');
+const welcome=document.getElementById('welcome'), hint=document.getElementById('hint');
+addEventListener('resize',()=>{ sizeCv(); sizeGalaxy(); });
+let curF=0;
+function loop(){
+  requestAnimationFrame(loop);
+  const max=sceneEl.offsetHeight-innerHeight;
+  const p=Math.min(1,Math.max(0, scrollY/max));
+  // hedef kare → lerp ile yumuşak akış. p/0.62 = scrub erken biter (hız yüksek)
+  const targetF=Math.min(1,p/0.62)*(FRAME_COUNT-1);
+  curF += (targetF-curF)*0.28;                      // daha snappy takip
+  if(Math.abs(targetF-curF)<0.012) curF=targetF;
+  if(framesReady){ const idx=Math.max(0,Math.min(FRAME_COUNT-1,Math.round(curF)));
+    if(idx!==lastIdx){ lastIdx=idx; drawAt(idx); } }
+  const w=band(p,0.56,0.70);                        // dokunma tamamlanırken belirir, sonra sabit kalır
+  welcome.style.opacity=w;
+  welcome.style.transform=`translate(-50%,calc(-50% + ${(1-w)*24}px))`;
+  hint.style.opacity=1-band(p,0.02,0.12);
+}
+loop();
+</script>
+</body>
+</html>
