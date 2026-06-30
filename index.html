@@ -64,9 +64,11 @@
     100%{transform:scaleY(1);transform-origin:bottom;opacity:0}}
   @media(max-width:760px){body{cursor:auto}#cursor{display:none}
     /* mobilde dikey video tüm ekranı doldurur (cover) */
-    .welcome{top:60%;width:92vw}
+    .welcome{top:58%;width:92vw}
     .welcome h1{font-size:clamp(34px,9vw,52px)}
-    .welcome .k{margin-bottom:12px}}
+    .welcome .k{margin-bottom:12px}
+    /* ipucunu tarayıcı alt çubuğunun üstüne al + büyüt */
+    .hint{bottom:calc(70px + env(safe-area-inset-bottom));font-size:11px}}
 </style>
 </head>
 <body>
