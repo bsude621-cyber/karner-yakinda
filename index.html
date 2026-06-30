@@ -51,8 +51,9 @@
   .welcome h1 b{color:var(--vio2)}
   .welcome p{margin-top:20px;color:var(--silver);font-weight:300;font-size:clamp(15px,1.6vw,20px)}
 
-  .hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:7;color:var(--gray);
-    font-size:10px;letter-spacing:.32em;display:flex;flex-direction:column;align-items:center;gap:8px;will-change:opacity}
+  .hint{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:7;color:var(--silver);
+    font-size:10px;letter-spacing:.32em;text-transform:uppercase;display:flex;flex-direction:column;
+    align-items:center;gap:8px;will-change:opacity;text-shadow:0 1px 10px rgba(0,0,0,.85)}
   .hint i{width:1px;height:32px;background:linear-gradient(var(--vio),transparent);animation:drop 1.9s infinite}
 
   #cursor{position:fixed;top:0;left:0;z-index:30;width:26px;height:26px;margin:-13px 0 0 -13px;
@@ -84,7 +85,7 @@
     <h1>yakında <b>sizlerleyiz</b>.</h1>
     <p>Web, yapay zekâ ve otomasyonu tek zekâda birleştiren dijital stüdyo.</p>
   </div>
-  <div class="hint" id="hint"><i></i></div>
+  <div class="hint" id="hint"><span>aşağı kaydır</span><i></i></div>
 </div></div>
 
 <div id="cursor"></div>
