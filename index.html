@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KARNER — Otonom Evren</title>
+<title>KARNER — yakında sizlerleyiz</title>
+<meta name="description" content="KARNER — web, yapay zekâ ve otomasyonu tek zekâda birleştiren dijital stüdyo. Çok yakında.">
+<link rel="icon" type="image/png" href="assets/karner-logo.png">
+<meta property="og:title" content="KARNER — yakında sizlerleyiz">
+<meta property="og:description" content="Web, yapay zekâ ve otomasyonu tek zekâda birleştiren dijital stüdyo.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://karneryazilim.com">
+<meta name="theme-color" content="#0a0612">
 <style>
   :root{--bg:#0a0612;--vio:#8b5cff;--vio2:#b18cff;--viod:#5a2fd6;--silver:#e6e6ea;--gray:#8a8a93}
   *{margin:0;padding:0;box-sizing:border-box}
@@ -19,7 +26,7 @@
   #scene{height:200vh;position:relative;z-index:1}
   #stick{position:sticky;top:0;height:100vh;overflow:hidden;background:transparent}
   #cv{position:absolute;inset:0;width:100%;height:100%;z-index:2;display:block;
-    object-fit:cover;will-change:transform}
+    object-fit:cover;will-change:transform;opacity:0;transition:opacity .6s ease}
   .vignette{position:absolute;inset:0;z-index:4;pointer-events:none;
     box-shadow:inset 0 0 200px 56px rgba(5,3,12,.55)}
 
@@ -52,21 +59,17 @@
     border:1px solid var(--vio);border-radius:50%;pointer-events:none;mix-blend-mode:screen;
     box-shadow:0 0 12px var(--vio);will-change:transform;transition:width .2s,height .2s}
   #cursor::after{content:"";position:absolute;inset:11px;border-radius:50%;background:var(--vio2)}
-  #loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:#060409;
-    color:var(--vio2);letter-spacing:.4em;font-size:11px;transition:opacity .8s}
   @keyframes drop{0%{transform:scaleY(0);transform-origin:top;opacity:0}40%{transform:scaleY(1);opacity:1}
     100%{transform:scaleY(1);transform-origin:bottom;opacity:0}}
   @media(max-width:760px){body{cursor:auto}#cursor{display:none}
-    /* mobilde iki robot da kesilmeden görünür; bant yukarı, yazı altına. arka = galaksi */
-    #cv{object-fit:contain;object-position:center 24%}
-    .welcome{top:64%;width:92vw}
+    /* mobilde dikey video tüm ekranı doldurur (cover) */
+    .welcome{top:60%;width:92vw}
     .welcome h1{font-size:clamp(34px,9vw,52px)}
     .welcome .k{margin-bottom:12px}}
 </style>
 </head>
 <body>
 <canvas id="galaxy"></canvas>
-<div id="loader">EVREN YÜKLENİYOR</div>
 
 <div class="bar">
   <div class="mark"><img src="assets/karner-logo.png" alt="KARNER"><span>KAR<b>NER</b></span></div>
@@ -135,19 +138,20 @@ drawGalaxy();
 /* ===== HERO: video scrub — ImageBitmap pre-decode (kaydırırken decode yok) ===== */
 const cv=document.getElementById('cv');
 const cx=cv.getContext('2d',{alpha:false,desynchronized:true});
-const FW=1920, FH=1080;            // kare native çözünürlüğü = canvas sabit boyutu
+const MOBILE=matchMedia('(max-width:760px)').matches;   // mobil = dikey 9:16 video
+const FW=MOBILE?1080:1920, FH=MOBILE?1920:1080;          // kare native = canvas sabit boyut
+const DIR=MOBILE?'frames-m':'frames';                   // dikey / yatay kare seti
 let lastIdx=-1;
-function sizeCv(){ cv.width=FW; cv.height=FH;   // sabit buffer, DPR transform yok
-  cx.imageSmoothingQuality='high'; lastIdx=-1; } // ölçeklemeyi CSS object-fit:cover (GPU) yapar
+function sizeCv(){ cv.width=FW; cv.height=FH;            // sabit buffer, DPR transform yok
+  cx.imageSmoothingQuality='high'; lastIdx=-1; }         // ölçekleme CSS object-fit:cover (GPU)
 sizeCv();
-const FRAME_COUNT=49, bmps=new Array(FRAME_COUNT); let loaded=0, framesReady=false;
-function ready(){ if(framesReady)return; framesReady=true; lastIdx=-1;
-  const l=document.getElementById('loader'); if(l){ l.style.opacity=0; setTimeout(()=>l.remove(),700); } }
-for(let i=0;i<FRAME_COUNT;i++){ const img=new Image(); img.decoding='async';
-  img.onload =async()=>{ try{ bmps[i]=await createImageBitmap(img); }catch(e){ bmps[i]=img; }
-    if(++loaded>=FRAME_COUNT) ready(); };
-  img.onerror=()=>{ if(++loaded>=FRAME_COUNT) ready(); };
-  img.src=`frames/${String(i+1).padStart(4,'0')}.jpg`; }
+const FRAME_COUNT=49, bmps=new Array(FRAME_COUNT); let started=false;
+function reveal(){ if(started)return; started=true; cv.style.opacity=1; lastIdx=-1; } // ilk karede aç
+for(let i=0;i<FRAME_COUNT;i++){ const idx=i; const img=new Image(); img.decoding='async';
+  img.onload =async()=>{ try{ bmps[idx]=await createImageBitmap(img); }catch(e){ bmps[idx]=img; }
+    if(idx===0) reveal(); };
+  img.src=`${DIR}/${String(idx+1).padStart(4,'0')}.jpg`; }
+setTimeout(reveal,1500);                                 // güvenlik: ilk kare gecikse de aç
 function drawAt(idx){
   const bmp=bmps[idx];
   if(!bmp){ cx.fillStyle='#0a0717'; cx.fillRect(0,0,FW,FH); return; }
@@ -167,7 +171,7 @@ function loop(){
   const targetF=Math.min(1,p/0.62)*(FRAME_COUNT-1);
   curF += (targetF-curF)*0.28;                      // daha snappy takip
   if(Math.abs(targetF-curF)<0.012) curF=targetF;
-  if(framesReady){ const idx=Math.max(0,Math.min(FRAME_COUNT-1,Math.round(curF)));
+  if(started){ const idx=Math.max(0,Math.min(FRAME_COUNT-1,Math.round(curF)));
     if(idx!==lastIdx){ lastIdx=idx; drawAt(idx); } }
   const w=band(p,0.56,0.70);                        // dokunma tamamlanırken belirir, sonra sabit kalır
   welcome.style.opacity=w;
